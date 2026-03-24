@@ -1,6 +1,8 @@
 #if SPECIALVERSION
+using Il2Cpp;
 using Il2CppDMM;
 using MelonLoader;
+//using MelonLoader;
 using Object = UnityEngine.Object;
 namespace kg_LastEpoch_Improvements;
 public static class RaresOnMap
@@ -23,7 +25,6 @@ public static class RaresOnMap
     { 
         private static void Postfix(ActorSync __instance, byte rarity)
         {
-            //Sometimes it throws an error so stage is used to find out where it failed. Will be removed in the future
             int stage = 0;
             try
             {
@@ -33,18 +34,19 @@ public static class RaresOnMap
                 stage = 2;
                 GameObject customMapIcon = Object.Instantiate(kg_LastEpoch_Improvements.CustomMapIcon, DMMap.Instance.iconContainer.transform);
                 stage = 3;
-                customMapIcon.SetActive(true);
-                customMapIcon.GetComponent<kg_LastEpoch_Improvements.CustomIconProcessor>().Init(__instance.actorVisuals.gameObject, null);
+                customMapIcon.SetActive(true);  
+                var customMapIconComponent = customMapIcon.GetIconProcessor();
+                customMapIconComponent.Init(__instance.actorVisuals.gameObject, null);
                 stage = 4;
                 customMapIcon.GetComponent<Image>().enabled = false;
                 customMapIcon.transform.GetChild(0).GetComponent<Image>().sprite = GetIcon();
                 stage = 5;
                 customMapIcon.name = $"rare_{__instance.gameObject.name}_{rarity}";
-                stage = 6;
+                stage = 6; 
             }
             catch (Exception ex)
             {
-                MelonLogger.Error($"Error while trying to how {__instance} ({__instance.gameObject.name} on map. Stage: {stage}");
+                MelonLogger.Msg($"Error while trying to how {__instance} ({__instance.gameObject.name} on map. Stage: {stage}");
             }
         }
     }

@@ -1,12 +1,9 @@
 #if SPECIALVERSION
-using Il2CppLE.Services.Bazaar;
-using Il2CppLE.UI.Bazaar;
-using Il2CppLE.UI.MultiPicker;
+using Il2Cpp;
 using Il2CppTMPro;
 using MelonLoader;
 using UnityEngine.Localization.Components;
 using UnityEngine.SceneManagement;
-using State = Il2CppLE.UI.MultiPicker.State;
 
 namespace kg_LastEpoch_Improvements;
  
@@ -31,8 +28,8 @@ public static class UI_QoL
             newObj.transform.GetChild(2).GetComponent<TMP_Text>().text = name;
             Button button = newObj.GetComponent<Button>();
             button.onClick.RemoveAllListeners(); 
-            button.onClick.AddListener(onPress);
-        }
+            button.onClick.AddListener(onPress);  
+        }  
 
         private static void InsertEmptySpace(Transform parent, int width)
         {
@@ -43,7 +40,7 @@ public static class UI_QoL
         
         private static void Postfix(EnableWovenEchoesTabIfRelevant __instance)
         {
-            GameObject copy = __instance.transform.Find("Tab Contents/Items Tab/Inventory Footer/Left_Buttons_Container/Sort").gameObject;
+            GameObject copy = __instance.transform.Find("Tab Contents/Items Tab/Inventory Tab Footer Base/Left_Buttons_Container/Sort").gameObject;
             CreateButton(copy, "Stash", container_base64.ToSprite(), Color.green, () =>
             {
                 if (UIBase.instance.stashPanel.instance && UIBase.instance.stashPanel.instance.active) UIBase.instance.closeStash(true);
@@ -55,10 +52,10 @@ public static class UI_QoL
                 else UIBase.instance.openShop(true);
             }); 
             InsertEmptySpace(copy.transform.parent, 20);
-            CreateButton(copy, "Sell All", sellall_base64.ToSprite(), Color.red, () =>
+            /*CreateButton(copy, "Sell All", sellall_base64.ToSprite(), Color.red, () =>
             {
                 MelonCoroutines.Start(SellAll());
-            });
+            });  */
         }
     }  
     private static IEnumerator SellAll()

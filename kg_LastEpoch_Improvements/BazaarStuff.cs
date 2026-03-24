@@ -1,3 +1,4 @@
+using Il2Cpp;
 using Il2CppLE.Services.Bazaar;
 using Il2CppLE.UI.Bazaar;
 using Il2CppLE.UI.MultiPicker;
@@ -27,7 +28,6 @@ public static class BazaarStuff
     {
         if (mods == null || mods.Count == 0) return;
         BazaarUI bazaarUI = UIBase.instance.BazaarMenu;
-        bazaarUI.filterUI.advancedButton.onClick.Invoke();
         bazaarUI.filterUI.affixesPicker.multiPickerOpener.openPickerButton.onClick.Invoke();
         State state = bazaarUI.FilterUI.affixesPicker.multiPickerOpener.multipicker.CurrentState;
         foreach (ItemAffix mod in mods)
@@ -37,7 +37,6 @@ public static class BazaarStuff
             val.data = new AffixData() { tier = mod.DisplayTier };
         }
         bazaarUI.filterUI.affixesPicker.multiPickerOpener.multipicker.confirmButton.onClick.Invoke();
-        bazaarUI.filterUI.advancedButton.onClick.Invoke();
     }
     
     private static IEnumerator PressSearchAfterLoadDone(ItemDataUnpacked item)

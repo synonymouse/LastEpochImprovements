@@ -7,4 +7,3 @@ global using UnityEngine.UI;
 global using System;
 global using System.Collections;
 global using System.Reflection.Metadata;
-global using Il2Cpp;

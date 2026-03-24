@@ -1,6 +1,6 @@
 #if SPECIALVERSION
+using Il2Cpp;
 using Il2CppDMM;
-using MelonLoader;
 using Object = UnityEngine.Object;
 namespace kg_LastEpoch_Improvements;
 public static class ShrinesOnMap
@@ -10,13 +10,13 @@ public static class ShrinesOnMap
     private static Sprite GetIcon()
     {
         if (icon) return icon;
-        Texture2D texture = new Texture2D(1, 1);
+        Texture2D texture = new Texture2D(1, 1); 
         texture.LoadImage(Convert.FromBase64String(Icon_Base64));
         texture.Apply();
         icon = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
         icon.name = "ShrinesOnMap";
-        return icon;
-    } 
+        return icon;  
+    }    
     
     [HarmonyPatch(typeof(ShrineSync),nameof(ShrineSync.PlaceClientShrine))]
     private static class ShrineSync_MessageSyncRarit 
@@ -28,9 +28,12 @@ public static class ShrinesOnMap
                 if (!kg_LastEpoch_Improvements.ShowShrinesOnMap.Value) return;
                 GameObject customMapIcon = Object.Instantiate(kg_LastEpoch_Improvements.CustomMapIcon, DMMap.Instance.iconContainer.transform);
                 customMapIcon.SetActive(true);
-                customMapIcon.GetComponent<kg_LastEpoch_Improvements.CustomIconProcessor>().Init(__instance.ShrineObject.gameObject, null);
+                
+                var customMapIconComponent = customMapIcon.GetIconProcessor();
+                
+                customMapIconComponent.Init(__instance.ShrineObject.gameObject, null);
                 if (__instance.ShrineObject?.GetComponent<DisplayInformation>() is {} info) 
-                    customMapIcon.GetComponent<kg_LastEpoch_Improvements.CustomIconProcessor>().SetCustomText(info.description, Color.green, 12);
+                    customMapIconComponent.SetCustomText(info.description, Color.green, 12);
                 customMapIcon.GetComponent<Image>().enabled = false;
                 customMapIcon.transform.GetChild(0).GetComponent<Image>().sprite = GetIcon();
                 customMapIcon.name = $"shrine_{__instance.gameObject.name}";

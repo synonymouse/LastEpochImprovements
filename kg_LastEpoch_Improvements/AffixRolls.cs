@@ -1,4 +1,6 @@
-﻿namespace kg_LastEpoch_Improvements;
+﻿using Il2Cpp;
+
+namespace kg_LastEpoch_Improvements;
 
 public static class AffixRolls
 {
@@ -13,7 +15,7 @@ public static class AffixRolls
         else
             affixStr = affixStr.Insert(lastNewLine, toInsert);
         return affixStr;
-    }
+    } 
 
     public static string Style1_AffixRoll_Unique(this string affixStr, ItemDataUnpacked item, int uniqueModIndex, float modifierValue)
     {

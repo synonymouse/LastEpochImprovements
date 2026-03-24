@@ -1,4 +1,5 @@
-﻿using Il2CppTMPro;
+﻿using Il2Cpp;
+using Il2CppTMPro;
 using MelonLoader;
 using static kg_LastEpoch_Improvements.kg_LastEpoch_Improvements;
 
@@ -17,6 +18,7 @@ public class Experimental
     {
         private static void Postfix(GroundItemLabel __instance)
         {
+                
             if (ShowAffixOnLabel.Value is DisplayAffixType_GroundLabel.None) return;
             MelonCoroutines.Start(DelayRoutine(__instance));
         }
@@ -31,16 +33,16 @@ public class Experimental
                 itemData = item.getItemData();
                 if (itemData == null) yield break;
             }
-            catch { yield break; }
-
+            catch { yield break; } 
+    
             TextMeshProUGUI tmp = item.itemText;
             if (!tmp) yield break;
-
+ 
             bool isFiltered = ShowAffixOnLabel.Value is (DisplayAffixType_GroundLabel.With_Tier_Filter_Only or DisplayAffixType_GroundLabel.Without_Tier_Filter_Only or DisplayAffixType_GroundLabel.Letter_With_Tier_Filter_Only or DisplayAffixType_GroundLabel.Letter_Without_Tier_Filter_Only);
             bool isLetter = ShowAffixOnLabel.Value is (DisplayAffixType_GroundLabel.Letter_With_Tier or DisplayAffixType_GroundLabel.Letter_Without_Tier or DisplayAffixType_GroundLabel.Letter_With_Tier_Filter_Only or DisplayAffixType_GroundLabel.Letter_Without_Tier_Filter_Only);
             
             if (isFiltered && !kg_LastEpoch_Improvements.CheckFilter(itemData, out _, true)) yield break;
-
+ 
             string itemName = itemData.FullName;
             if (itemData.isUnique() && itemData.affixes.Count == 0)
             {
@@ -74,7 +76,6 @@ public class Experimental
                 }
                 if (isLetter) itemName += " ]";
             }
-
             tmp.text = "";
             tmp.text = item.emphasized ? itemName.ToUpper() : itemName;
             item.sceneFollower?.calculateDimensions();

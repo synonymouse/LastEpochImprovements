@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using Il2Cpp;
 using Il2CppLE.Data;
 using Il2CppLE.Services.Bazaar;
 using Il2CppLE.UI.Controls;
@@ -81,7 +82,7 @@ public static class Utils
             GameObject _disabled = new GameObject("disabled.copydropdown") { hideFlags = HideFlags.HideAndDontSave };
             _disabled.SetActive(false);
             CopyFrom_Dropdown = UnityEngine.Object.Instantiate(newDropdown.gameObject, _disabled.transform);
-        }
+        }  
         ColoredIconDropdown dropdown = newDropdown.GetChild(3).GetComponent<ColoredIconDropdown>();
         dropdown.onValueChanged.RemoveAllListeners();
         dropdown.ClearOptions();
@@ -95,9 +96,9 @@ public static class Utils
     public static Sprite ToSprite(this string base64)
     {
         byte[] bytes = Convert.FromBase64String(base64);
-        Texture2D texture = new Texture2D(1, 1);
+        Texture2D texture = new Texture2D(1, 1); 
         texture.LoadImage(bytes); 
-        texture.Apply();
+        texture.Apply(); 
         return Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
     }
     private static BazaarStallType? IdolStall(ItemData item) => item.getAsUnpacked()?.classReq switch
