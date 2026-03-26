@@ -17,8 +17,9 @@ public static class UI_QoL
         private const string sellall_base64 = "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAJVSURBVDiNlVBPSBRhHH3zzezO7mw607bquqSDmpj5hyXwUFEdopCyxAgCgw55qig8dZBAIoIoOkSIQYc8eAjEmx7SCCJChEzDBWtxl23B1dZdnXV3x92Zb2Y6hLKaf+h3+vjeH957TKNT/HhcEKvwn2dacIRzmSTnF8TqnvI6uS8ehp0QdJfWYGh1AVFNhUA4dLoPY5lq8AsiAGBEWUKb5AW1LNwLfZc4Alivl8N44K3FmkkxrMQQ1VT0+uoBADNqChFN3TSYUlfRJnkBAAwAAgBnijzojc3hfeo3Ot0VWKE6HsXmMLy6sG8VDgBE1oYXFU2YzK7gbeIX3JxtS4J9DSJ5FSPKEjImRYfkQzCXwUAiCjth0OAoxqf0MhSq4+QBN5JUx0AiCoGwf2u0imWhftlfnTYoWIaBQFgoho41g2LMSqGRc8FncAAAD2dHzjSQMQ3AtPA0FswwpTx/vozwl7dH0y2Tv3LjXPvE1x9ZJbg4uh13MVxx0qBDXDyfH48jP75DvYNXefslzsWraolrNhRdfLPTBuwe+zhPtzTcEZy87D9WdSKTXT+bp/mJXI4qhSSyi9i+8ZCKXbYaubyk/8ndNu8hz+S11lNbknDblS3NtS+b6uX26UB4HoRhBBsPh8NOxCIBXdcvlAaCkYt7GpimKXXfavfVVHrldHYdZR5pE6uuLMfth31b+P9UmAqEujrvP3/34ctMqlC82+20AQ38jN7seTY4+G12XisELMuCrlNa+MfsYc62NB8ZbTwq1xHCgrFAcprmjCdSj8c+T7/aIP0BVmTkKWrbqVEAAAAASUVORK5CYII=";
         private static void CreateButton(GameObject copy, string name, Sprite icon, Color backgroundColor, Action onPress)
         {
+            if (copy == null) return;
             GameObject newObj = UnityEngine.Object.Instantiate(copy, copy.transform.parent);
-            newObj.name = name; 
+            newObj.name = name;
             UnityEngine.Object.DestroyImmediate(newObj.GetComponent<SortInventoryButton>());
             newObj.transform.GetChild(0).GetComponent<Image>().color = backgroundColor;
             newObj.transform.GetChild(1).GetComponent<Image>().sprite = icon;
@@ -27,12 +28,13 @@ public static class UI_QoL
             UnityEngine.Object.DestroyImmediate(newObj.transform.GetChild(2).GetComponent<LocalizeStringEvent>());
             newObj.transform.GetChild(2).GetComponent<TMP_Text>().text = name;
             Button button = newObj.GetComponent<Button>();
-            button.onClick.RemoveAllListeners(); 
-            button.onClick.AddListener(onPress);  
-        }  
+            button.onClick.RemoveAllListeners();
+            button.onClick.AddListener(onPress);
+        }
 
         private static void InsertEmptySpace(Transform parent, int width)
         {
+            if (parent == null) return;
             GameObject emptySpace = new GameObject("EmptySpace");
             emptySpace.transform.SetParent(parent);
             emptySpace.AddComponent<LayoutElement>().preferredWidth = width;
@@ -40,22 +42,51 @@ public static class UI_QoL
         
         private static void Postfix(EnableWovenEchoesTabIfRelevant __instance)
         {
-            GameObject copy = __instance.transform.Find("Tab Contents/Items Tab/Inventory Tab Footer Base/Left_Buttons_Container/Sort").gameObject;
-            CreateButton(copy, "Stash", container_base64.ToSprite(), Color.green, () =>
+            try
             {
-                if (UIBase.instance.stashPanel.instance && UIBase.instance.stashPanel.instance.active) UIBase.instance.closeStash(true);
-                else UIBase.instance.openStash(true);
-            });
-            CreateButton(copy, "Trader", trader_base64.ToSprite(), Color.yellow, () =>
+                MelonLogger.Msg("[UI_QoL] Postfix called");
+                if (__instance == null)
+                {
+                    MelonLogger.Warning("[UI_QoL] __instance is null");
+                    return;
+                }
+                MelonLogger.Msg("[UI_QoL] __instance: " + __instance.name);
+                if (__instance.transform == null)
+                {
+                    MelonLogger.Warning("[UI_QoL] __instance.transform is null");
+                    return;
+                }
+                MelonLogger.Msg("[UI_QoL] Searching for Sort button...");
+                Transform target = __instance.transform.Find("Tab Contents/Items Tab/Inventory Tab Footer Base/Left_Buttons_Container/Sort");
+                if (target == null)
+                {
+                    MelonLogger.Warning("[UI_QoL] Sort button not found. Hierarchy:");
+                    LogHierarchy(__instance.transform);
+                    return;
+                }
+                MelonLogger.Msg("[UI_QoL] Found Sort button");
+                GameObject copy = target.gameObject;
+                CreateButton(copy, "Stash", container_base64.ToSprite(), Color.green, () =>
+                {
+                    if (UIBase.instance.stashPanel.instance && UIBase.instance.stashPanel.instance.active) UIBase.instance.closeStash(true);
+                    else UIBase.instance.openStash(true);
+                });
+                CreateButton(copy, "Trader", trader_base64.ToSprite(), Color.yellow, () =>
+                {
+                    if (UIBase.instance.shop.instance && UIBase.instance.shop.instance.active) UIBase.instance.closeShop();
+                    else UIBase.instance.openShop(true);
+                });
+                InsertEmptySpace(copy.transform.parent, 20);
+                CreateButton(copy, "Sell All", sellall_base64.ToSprite(), Color.red, () =>
+                {
+                    MelonCoroutines.Start(SellAll());
+                });
+                MelonLogger.Msg("[UI_QoL] Buttons created successfully");
+            }
+            catch (Exception ex)
             {
-                if (UIBase.instance.shop.instance && UIBase.instance.shop.instance.active) UIBase.instance.closeShop();
-                else UIBase.instance.openShop(true);
-            }); 
-            InsertEmptySpace(copy.transform.parent, 20);
-            /*CreateButton(copy, "Sell All", sellall_base64.ToSprite(), Color.red, () =>
-            {
-                MelonCoroutines.Start(SellAll());
-            });  */
+                MelonLogger.Error("[UI_QoL] Exception in Postfix: " + ex.ToString());
+            }
         }
     }  
     private static IEnumerator SellAll()
@@ -71,6 +102,16 @@ public static class UI_QoL
         {
             ItemContainersManager.Instance.tryManualQuickMove(ContainerID.INVENTORY, ContainerID.SHOP, positions[i], false);
             yield return null; yield return null; yield return null;
+        }
+    }
+    private static void LogHierarchy(Transform root, int depth = 0)
+    {
+        string indent = new string(' ', depth * 2);
+        MelonLogger.Msg(indent + root.name);
+        for (int i = 0; i < root.childCount; i++)
+        {
+            Transform child = root.GetChild(i);
+            LogHierarchy(child, depth + 1);
         }
     }
 }

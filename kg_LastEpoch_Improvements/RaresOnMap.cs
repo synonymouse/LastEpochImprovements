@@ -2,7 +2,6 @@
 using Il2Cpp;
 using Il2CppDMM;
 using MelonLoader;
-//using MelonLoader;
 using Object = UnityEngine.Object;
 namespace kg_LastEpoch_Improvements;
 public static class RaresOnMap
@@ -14,39 +13,38 @@ public static class RaresOnMap
         if (icon) return icon;
         Texture2D texture = new Texture2D(1, 1);
         texture.LoadImage(Convert.FromBase64String(Icon_Base64));
-        texture.Apply();
-        icon = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
-        icon.name = "RaresOnMapIcon";
-        return icon;
-    } 
+            texture.Apply();
+            icon = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
+            icon.name = "RaresOnMapIcon";
+            return icon;
+    }
     
     [HarmonyPatch(typeof(ActorSync),nameof(ActorSync.ReceiveInitDisplayInformation))]
     private static class ActorSync_MessageSyncRarit 
     { 
         private static void Postfix(ActorSync __instance, byte rarity)
         {
+            //Sometimes it throws an error so stage is used to find out where it failed. Will be removed in the future
             int stage = 0;
             try
             {
                 if (!kg_LastEpoch_Improvements.ShowRaresOnMap.Value) return;
-                stage = 1;
                 if (__instance is PlayerActorSync || rarity <= 1) return;
-                stage = 2;
+
                 GameObject customMapIcon = Object.Instantiate(kg_LastEpoch_Improvements.CustomMapIcon, DMMap.Instance.iconContainer.transform);
                 stage = 3;
-                customMapIcon.SetActive(true);  
-                var customMapIconComponent = customMapIcon.GetIconProcessor();
-                customMapIconComponent.Init(__instance.actorVisuals.gameObject, null);
+                customMapIcon.SetActive(true);
+                customMapIcon.GetIconProcessor().Init(__instance.actorVisuals.gameObject, null);
                 stage = 4;
                 customMapIcon.GetComponent<Image>().enabled = false;
                 customMapIcon.transform.GetChild(0).GetComponent<Image>().sprite = GetIcon();
                 stage = 5;
                 customMapIcon.name = $"rare_{__instance.gameObject.name}_{rarity}";
-                stage = 6; 
+                stage = 6;
             }
             catch (Exception ex)
             {
-                MelonLogger.Msg($"Error while trying to how {__instance} ({__instance.gameObject.name} on map. Stage: {stage}");
+                MelonLogger.Error($"Error while trying to how {__instance} ({__instance.gameObject.name} on map. Stage: {stage}");
             }
         }
     }

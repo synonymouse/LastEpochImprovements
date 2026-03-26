@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using Il2Cpp;
 using Il2CppLE.Data;
 using Il2CppLE.Services.Bazaar;

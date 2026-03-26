@@ -1,4 +1,4 @@
-﻿using Il2Cpp;
+using Il2Cpp;
 using Il2CppTMPro;
 using MelonLoader;
 using static kg_LastEpoch_Improvements.kg_LastEpoch_Improvements;

@@ -1,4 +1,4 @@
-﻿using System.Drawing;
+using System.Drawing;
 using System.Net.Mime;
 using System.Numerics;
 using Il2Cpp;
@@ -116,6 +116,7 @@ public class kg_LastEpoch_Improvements : MelonMod
     private static MelonPreferences_Entry<bool> ShowAll;
     private static MelonPreferences_Entry<DisplayAffixType> AffixShowRoll;
     public static MelonPreferences_Entry<DisplayAffixType_GroundLabel> ShowAffixOnLabel;
+    public static MelonPreferences_Entry<bool> EnablePickupOnF;
 #if SPECIALVERSION
     private static MelonPreferences_Entry<bool> FogOfWar;
     private static MelonPreferences_Entry<bool> EnhancedCamera;
@@ -161,6 +162,9 @@ public class kg_LastEpoch_Improvements : MelonMod
         backgroundIcon.rectTransform.sizeDelta = new Vector2(24, 24);
         CanvasGroup canvasGroup = CustomMapIcon.AddComponent<CanvasGroup>();
         canvasGroup.ignoreParentGroups = true;
+        canvasGroup.alpha = 1f;
+        canvasGroup.interactable = true;
+        canvasGroup.blocksRaycasts = true;
         GameObject textChild = new("Text");
         textChild.transform.SetParent(CustomMapIcon.transform);
         textChild.transform.localPosition = Vector3.zero;
@@ -173,12 +177,14 @@ public class kg_LastEpoch_Improvements : MelonMod
         textComponent.verticalOverflow = VerticalWrapMode.Overflow;
         Outline outline = textComponent.AddComponent<Outline>();
         outline.effectColor = Color.black;
-        CustomMapIcon.AddComponent<CustomIconProcessor>(); 
+        CustomMapIcon.AddComponent<CustomIconProcessor>();
     }
- 
 
-    public override void OnUpdate() => BazaarStuff.Update();
-
+    public override void OnUpdate()
+    {
+        BazaarStuff.Update();
+        PickupItems.Update();
+    }
 
     public override void OnInitializeMelon()
     {
@@ -187,6 +193,7 @@ public class kg_LastEpoch_Improvements : MelonMod
         ShowAll = ImprovementsModCategory.CreateEntry("Show Override", false, "Show Override", "Show each filter rule on map");
         AffixShowRoll = ImprovementsModCategory.CreateEntry("Item Tooltip Style", DisplayAffixType.New_Style, "Show Affix Roll New", "Show each affix roll on item");
         ShowAffixOnLabel = ImprovementsModCategory.CreateEntry("Item Ground Label Style", DisplayAffixType_GroundLabel.With_Tier_Filter_Only, "Show Affix On Label Type", "Show each affix roll on item label (ground)");
+        EnablePickupOnF = ImprovementsModCategory.CreateEntry("EnablePickupOnF", false, "Enable item pickup on F key", "Allow picking up ground items by pressing F key when standing near them");
 #if SPECIALVERSION
         FogOfWar = ImprovementsModCategory.CreateEntry("Fog of war", false, "Clear fog on map on start", "Clear fog of war when you 1th enter on map");
         EnhancedCamera = ImprovementsModCategory.CreateEntry("Enhanced Camera", false, "Enhanced camera", "Enhanced camera angles and zoom");
@@ -318,7 +325,7 @@ public class kg_LastEpoch_Improvements : MelonMod
             customMapIcon.GetComponent<Image>().color = GetColorForItemRarity(itemData);
             customMapIcon.transform.GetChild(0).GetComponent<Image>().sprite = TooltipItemManager.instance.GetItemSprite(itemData.getAsUnpacked(), ItemUIContext.Default);
         }
-        
+
         private static void Prefix(GroundItemVisuals __instance, ItemDataUnpacked itemData, GroundItemLabel label, GroundItemRarityVisuals groundItemRarityVisuals)
         {
             try
@@ -340,7 +347,6 @@ public class kg_LastEpoch_Improvements : MelonMod
         public static Vector3 Offset => new Vector3(Map.sizeDelta.x / 2f, Map.sizeDelta.y / 2f, 0f);
         private static void Postfix(MinimapFogOfWar __instance) => Map = __instance.transform.Find("Map").GetComponent<RectTransform>();
     }
-
 
     [HarmonyPatch(typeof(SettingsPanelTabNavigable), nameof(SettingsPanelTabNavigable.Awake))]
     private static class SettingsPanelTabNavigable_Awake_Patch
@@ -384,6 +390,11 @@ public class kg_LastEpoch_Improvements : MelonMod
             __instance.CreateNewOption_Toggle(CategoryName, "<color=green>Map Filter Show All</color>", ShowAll, (tf) =>
             {
                 ShowAll.Value = tf;
+                ImprovementsModCategory.SaveToFile();
+            });
+            __instance.CreateNewOption_Toggle(CategoryName, "<color=green>Enable Pickup on F</color>", EnablePickupOnF, (tf) =>
+            {
+                EnablePickupOnF.Value = tf;
                 ImprovementsModCategory.SaveToFile();
             });
         }

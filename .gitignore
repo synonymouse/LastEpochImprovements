@@ -34,3 +34,7 @@ kg_LastEpoch_FilterIcons_Melon/obj/Release/net6.0/refint/kg_LastEpoch_FilterIcon
 /.vs/kg_LastEpoch_FilterIcons/DesignTimeBuild
 /.vs/kg_LastEpoch_FilterIcons/v17
 /.vs/ProjectEvaluation
+kg_LastEpoch_Improvements/obj/
+kg_LastEpoch_Improvements/bin/
+.DS_Store
+kg_LastEpoch_Improvements/.DS_Store
