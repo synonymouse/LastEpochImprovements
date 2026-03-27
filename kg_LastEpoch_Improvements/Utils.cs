@@ -37,7 +37,7 @@ public static class Utils
     {
         Transform findExisting = settings.transform.GetChild(0).GetChild(0).Find($"ModsCategory - {Category}");
         if (findExisting) return findExisting.GetSiblingIndex();
-        Transform headerInterface = settings.transform.GetChild(0).GetChild(0).Find("Header-Interface");
+        Transform headerInterface = settings.transform.GetChild(0).GetChild(0).Find("Header - Interface");
         if (!headerInterface) return 0;
         Transform newCategory = UnityEngine.Object.Instantiate(headerInterface, headerInterface.parent);
         newCategory.name = $"ModsCategory - {Category}";
@@ -49,17 +49,30 @@ public static class Utils
     }
     public static void CreateNewOption_Toggle(this SettingsPanelTabNavigable settings, string Category, string Name, MelonPreferences_Entry<bool> option, Action<bool> a)
     {
-        Transform optionsTransform = settings.transform.GetChild(0).GetChild(0).Find("Option - Minion Health Bars");
-        if (!optionsTransform) return;
-        int orderIndex = CreateCategoryIfNeeded(settings, Category);
-        Transform newButton = UnityEngine.Object.Instantiate(optionsTransform, optionsTransform.parent);
-        newButton.name = Name;
-        newButton.SetSiblingIndex(orderIndex + 1); 
-        Toggle toggle = newButton.GetChild(0).GetComponent<Toggle>();
-        toggle.isOn = option.Value;
-        toggle.onValueChanged.AddListener(new Action<bool>(_ => a(toggle.isOn)));
-        UnityEngine.Object.DestroyImmediate(newButton.GetChild(1).GetChild(0).GetComponent<LocalizeStringEvent>());
-        newButton.GetChild(1).GetChild(0).GetComponent<TMP_Text>().text = Name; 
+        try
+        {
+            Transform optionsTransform = settings.transform.GetChild(0).GetChild(0).Find("Toogle - Minion Health Bars");
+            if (!optionsTransform) return;
+            int orderIndex = CreateCategoryIfNeeded(settings, Category);
+            Transform newButton = UnityEngine.Object.Instantiate(optionsTransform, optionsTransform.parent);
+            newButton.name = Name;
+            newButton.SetSiblingIndex(orderIndex + 1);
+            Toggle toggle = newButton.GetComponentInChildren<Toggle>();
+            if (toggle != null)
+            {
+                toggle.onValueChanged.RemoveAllListeners();
+                toggle.isOn = option.Value;
+                toggle.onValueChanged.AddListener(new Action<bool>(_ => a(toggle.isOn)));
+            }
+            foreach (var loc in newButton.GetComponentsInChildren<LocalizeStringEvent>())
+                UnityEngine.Object.DestroyImmediate(loc);
+            TMP_Text label = newButton.GetComponentInChildren<TMP_Text>();
+            if (label != null) label.text = Name;
+        }
+        catch (Exception ex)
+        {
+            MelonLoader.MelonLogger.Error($"[CreateNewOption_Toggle] Failed to create '{Name}': {ex.Message}");
+        }
     }
     public static GameObject CopyFrom_Dropdown;
     public static void CreateNewOption_EnumDropdown<T>(this SettingsPanelTabNavigable settings, string Category, string Name, string Description, MelonPreferences_Entry<T> option, Action<int> a) where T : Enum

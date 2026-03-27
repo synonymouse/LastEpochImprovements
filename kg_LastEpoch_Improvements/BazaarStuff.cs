@@ -2,6 +2,7 @@ using Il2Cpp;
 using Il2CppLE.Services.Bazaar;
 using Il2CppLE.UI.Bazaar;
 using Il2CppLE.UI.MultiPicker;
+using Il2CppLE.UI.PanelSystem;
 using MelonLoader;
 using UnityEngine.SceneManagement;
 using State = Il2CppLE.UI.MultiPicker.State;
@@ -18,7 +19,7 @@ public static class BazaarStuff
         if (type == null) return;
         if (SceneManager.GetActiveScene().name != "Bazaar") return;
         UIBase.instance.closeInventory();
-        BazaarUI bazaarUI = UIBase.instance.BazaarMenu;
+        BazaarUI bazaarUI = UIBase.instance.PanelSystem._bazaarPanel.BazaarUI;
         bazaarUI.FilterUI.ResetUI();
         UIBase.instance.openBazaar(new Il2CppSystem.Nullable<BazaarStallType>(type.Value));
         if (LastSearchPressRoutine != null) MelonCoroutines.Stop(LastSearchPressRoutine); 
@@ -27,16 +28,16 @@ public static class BazaarStuff
     private static void IncludeModsInSearch(List<ItemAffix> mods)
     {
         if (mods == null || mods.Count == 0) return;
-        BazaarUI bazaarUI = UIBase.instance.BazaarMenu;
+        BazaarUI bazaarUI = UIBase.instance.PanelSystem._bazaarPanel.BazaarUI;
         bazaarUI.filterUI.affixesPicker.multiPickerOpener.openPickerButton.onClick.Invoke();
-        State state = bazaarUI.FilterUI.affixesPicker.multiPickerOpener.multipicker.CurrentState;
+        State state = UIBase.instance.PanelSystem._multiPickerModal._multipicker.CurrentState;
         foreach (ItemAffix mod in mods)
         {
             if (!state.Entries.TryGetValue(mod.affixId, out StatefulEntry val)) continue;
             val.selected = true;
             val.data = new AffixData() { tier = mod.DisplayTier };
         }
-        bazaarUI.filterUI.affixesPicker.multiPickerOpener.multipicker.confirmButton.onClick.Invoke();
+        UIBase.instance.PanelSystem._multiPickerModal._multipicker.confirmButton.onClick.Invoke();
     }
     
     private static IEnumerator PressSearchAfterLoadDone(ItemDataUnpacked item)
@@ -44,12 +45,12 @@ public static class BazaarStuff
         yield return null; yield return null; yield return null;
         while (true)
         {
-            if (!UIBase.instance.BazaarMenu || !UIBase.instance.BazaarMenu.gameObject.activeSelf || item == null) 
+            if (!UIBase.instance.PanelSystem._bazaarPanel.BazaarUI || !UIBase.instance.PanelSystem._bazaarPanel.BazaarUI.gameObject.activeSelf || item == null) 
                 yield break;
-            if (!UIBase.instance.BazaarMenu.IsLoadingIndicatorActive)
+            if (!UIBase.instance.PanelSystem._bazaarPanel.BazaarUI.IsLoadingIndicatorActive)
             {
                 yield return new WaitForSeconds(0.5f);
-                BazaarUI bazaarUI = UIBase.instance.BazaarMenu;
+                BazaarUI bazaarUI = UIBase.instance.PanelSystem._bazaarPanel.BazaarUI;
                 bazaarUI.filterUI.clearFilterButton.onClick.Invoke();
                 if (item.isUniqueSetOrLegendary()) bazaarUI.FilterUI.uniquesPicker.SelectedUniques = new(1) { [0] = item.uniqueID };
                 bazaarUI.FilterUI.legendaryPotentialRange.min.text = item.legendaryPotential.ToString();

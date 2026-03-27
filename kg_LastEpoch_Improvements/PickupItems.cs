@@ -1,3 +1,4 @@
+using Il2Cpp;
 using Il2CppItemFiltering;
 using MelonLoader;
 using UnityEngine;

@@ -68,13 +68,11 @@ public static class UI_QoL
                 GameObject copy = target.gameObject;
                 CreateButton(copy, "Stash", container_base64.ToSprite(), Color.green, () =>
                 {
-                    if (UIBase.instance.stashPanel.instance && UIBase.instance.stashPanel.instance.active) UIBase.instance.closeStash(true);
-                    else UIBase.instance.openStash(true);
+                    UIBase.instance.openStash(true, false);
                 });
                 CreateButton(copy, "Trader", trader_base64.ToSprite(), Color.yellow, () =>
                 {
-                    if (UIBase.instance.shop.instance && UIBase.instance.shop.instance.active) UIBase.instance.closeShop();
-                    else UIBase.instance.openShop(true);
+                    UIBase.instance.openShop(true);
                 });
                 InsertEmptySpace(copy.transform.parent, 20);
                 CreateButton(copy, "Sell All", sellall_base64.ToSprite(), Color.red, () =>
@@ -92,7 +90,7 @@ public static class UI_QoL
     private static IEnumerator SellAll()
     {
         if (ItemContainersManager.Instance.inventory == null) yield break;
-        if (!UIBase.instance.shop.instance.active)
+        if (UIBase.instance != null)
         {
             UIBase.instance.openShop();
             UIBase.instance.closeShop();

@@ -30,6 +30,24 @@ public class CustomIconProcessor : MonoBehaviour
     private Text _text;
     private RectTransform thisTransform;
     private GroundItemLabel _label;
+    private static Il2CppLE.UI.Minimap.Minimap _minimap;
+
+    private static Vector3 WorldToMinimapUI(Vector3 worldPos)
+    {
+        var map = DMMap.Instance;
+        if (map == null) return Vector3.zero;
+        if (_minimap == null)
+            _minimap = UnityEngine.Object.FindObjectOfType<Il2CppLE.UI.Minimap.Minimap>();
+        if (_minimap == null) return Vector3.zero;
+        float worldRadius = _minimap.mapParameters.z;
+        if (worldRadius <= 0) return Vector3.zero;
+        var containerRect = map.iconContainer.GetComponent<RectTransform>().rect;
+        float scaleX = containerRect.width / (2f * worldRadius);
+        float scaleY = containerRect.height / (2f * worldRadius);
+        Vector3 playerPos = LocalPlayer.instance != null ? LocalPlayer.instance.transform.position : Vector3.zero;
+        Vector3 offset = worldPos - playerPos;
+        return new Vector3(-offset.z * scaleX, offset.x * scaleY, 0);
+    }
 
     private void Awake() => _text = transform.GetChild(1).GetComponent<Text>();
 
@@ -38,7 +56,7 @@ public class CustomIconProcessor : MonoBehaviour
         thisTransform = transform.GetComponent<RectTransform>();
         _trackable = toTrack;
         _label = label;
-        transform.localPosition = DMMap.Instance.WorldtoUI(toTrack?.transform.position ?? Vector3.zero) - kg_LastEpoch_Improvements.MinimapHook.Offset;
+        transform.localPosition = WorldToMinimapUI(toTrack?.transform.position ?? Vector3.zero);
     }
 
     public void ShowLegendaryPotential(int lp, int ww)
@@ -83,7 +101,7 @@ public class CustomIconProcessor : MonoBehaviour
             return;
         }
 
-        transform.localPosition = DMMap.Instance.WorldtoUI(_trackable.transform.position) - kg_LastEpoch_Improvements.MinimapHook.Offset;
+        transform.localPosition = WorldToMinimapUI(_trackable.transform.position);
 
         if (_label == null) return;
 
@@ -186,6 +204,34 @@ public class kg_LastEpoch_Improvements : MelonMod
         PickupItems.Update();
     }
 
+#if SPECIALVERSION
+    public override void OnSceneWasInitialized(int buildIndex, string sceneName)
+    {
+        if (FogOfWar.Value) MelonCoroutines.Start(RevealMinimap());
+    }
+
+    private static IEnumerator RevealMinimap()
+    {
+        Il2CppLE.UI.Minimap.Minimap minimap = null;
+        for (int i = 0; i < 10; i++)
+        {
+            yield return new WaitForSeconds(1f);
+            minimap = UnityEngine.Object.FindObjectOfType<Il2CppLE.UI.Minimap.Minimap>();
+            if (minimap != null) break;
+        }
+        if (minimap == null) yield break;
+        float original = minimap.RevealRadius;
+        minimap.RevealRadius = 10000f;
+        yield return null;
+        minimap.RevealRadius = original;
+    }
+
+    private static void ToggleFogOfWar(bool enable)
+    {
+        if (enable) MelonCoroutines.Start(RevealMinimap());
+    }
+#endif
+
     public override void OnInitializeMelon()
     {
         _this = this;
@@ -193,9 +239,9 @@ public class kg_LastEpoch_Improvements : MelonMod
         ShowAll = ImprovementsModCategory.CreateEntry("Show Override", false, "Show Override", "Show each filter rule on map");
         AffixShowRoll = ImprovementsModCategory.CreateEntry("Item Tooltip Style", DisplayAffixType.New_Style, "Show Affix Roll New", "Show each affix roll on item");
         ShowAffixOnLabel = ImprovementsModCategory.CreateEntry("Item Ground Label Style", DisplayAffixType_GroundLabel.With_Tier_Filter_Only, "Show Affix On Label Type", "Show each affix roll on item label (ground)");
-        EnablePickupOnF = ImprovementsModCategory.CreateEntry("EnablePickupOnF", false, "Enable item pickup on F key", "Allow picking up ground items by pressing F key when standing near them");
+        EnablePickupOnF = ImprovementsModCategory.CreateEntry("EnablePickupOnF", true, "Enable item pickup on F key", "Allow picking up ground items by pressing F key when standing near them");
 #if SPECIALVERSION
-        FogOfWar = ImprovementsModCategory.CreateEntry("Fog of war", false, "Clear fog on map on start", "Clear fog of war when you 1th enter on map");
+        FogOfWar = ImprovementsModCategory.CreateEntry("Fog of war", false, "Clear fog on map on start", "Reveal full minimap");
         EnhancedCamera = ImprovementsModCategory.CreateEntry("Enhanced Camera", false, "Enhanced camera", "Enhanced camera angles and zoom");
         ShowRaresOnMap = ImprovementsModCategory.CreateEntry("Show Rares On Map", false, "Show Rares On Map (some monsters might bug out and never spawn)", "Show rare items on map");
         ShowShrinesOnMap = ImprovementsModCategory.CreateEntry("Show Shrines On Map", false, "Show Shrines On Map", "Show shrines on map");
@@ -302,7 +348,7 @@ public class kg_LastEpoch_Improvements : MelonMod
         if (itemData == null) return false;
         if (itemData.rarity == 9) return true;
         ItemFilter filter = ItemFilterManager.Instance.Filter;
-        if (filter == null || filter.Match(itemData, out _, out _, out int matchingRuleNumber, out _, out _) == Rule.RuleOutcome.HIDE) return false;
+        if (filter == null || filter.Match(itemData, out _, out _, out int matchingRuleNumber, out _, out _, out _, out _, out _) == Rule.RuleOutcome.HIDE) return false;
         if (matchingRuleNumber <= 0) return false;
         int orderedIndex = filter.rules.Count - matchingRuleNumber;
         if (orderedIndex >= filter.rules.Count) return false;
@@ -311,11 +357,11 @@ public class kg_LastEpoch_Improvements : MelonMod
         return bypass || rule.emphasized;
     }
 
-    [HarmonyPatch(typeof(GroundItemVisuals), nameof(GroundItemVisuals.initialise), typeof(ItemDataUnpacked), typeof(uint), typeof(GroundItemLabel), typeof(GroundItemRarityVisuals), typeof(bool))]
-    private static class GroundItemVisuals_initialise_Patch
+    private static void ShowItemOnMap(GroundItemVisuals visuals, ItemDataUnpacked itemData, GroundItemLabel label)
     {
-        private static void ShowOnMap(GroundItemVisuals visuals, Rule rule, ItemDataUnpacked itemData, GroundItemLabel label, GroundItemRarityVisuals groundItemRarityVisuals)
+        try
         {
+            if (!CheckFilter(itemData, out Rule rule, ShowAll.Value)) return;
             GameObject customMapIcon = UnityEngine.Object.Instantiate(CustomMapIcon, DMMap.Instance.iconContainer.transform);
             customMapIcon.SetActive(true);
             var customiconProcessor = customMapIcon.GetIconProcessor();
@@ -325,27 +371,28 @@ public class kg_LastEpoch_Improvements : MelonMod
             customMapIcon.GetComponent<Image>().color = GetColorForItemRarity(itemData);
             customMapIcon.transform.GetChild(0).GetComponent<Image>().sprite = TooltipItemManager.instance.GetItemSprite(itemData.getAsUnpacked(), ItemUIContext.Default);
         }
-
-        private static void Prefix(GroundItemVisuals __instance, ItemDataUnpacked itemData, GroundItemLabel label, GroundItemRarityVisuals groundItemRarityVisuals)
+        catch (Exception ex)
         {
-            try
-            {
-                if (CheckFilter(itemData, out Rule rule, ShowAll.Value))
-                    ShowOnMap(__instance, rule, itemData, label, groundItemRarityVisuals);
-            }
-            catch (Exception ex)
-            {
-                MelonLogger.Error(ex);
-            }
+            MelonLogger.Error(ex);
         }
     }
 
-    [HarmonyPatch(typeof(MinimapFogOfWar), nameof(MinimapFogOfWar.Start))]
-    public static class MinimapHook
+    [HarmonyPatch(typeof(GroundItemVisuals), nameof(GroundItemVisuals.initialise), typeof(ItemDataUnpacked), typeof(uint), typeof(GroundItemLabel), typeof(GroundItemRarityVisuals), typeof(bool))]
+    private static class GroundItemVisuals_initialise_Patch
     {
-        private static RectTransform Map;
-        public static Vector3 Offset => new Vector3(Map.sizeDelta.x / 2f, Map.sizeDelta.y / 2f, 0f);
-        private static void Postfix(MinimapFogOfWar __instance) => Map = __instance.transform.Find("Map").GetComponent<RectTransform>();
+        private static void Prefix(GroundItemVisuals __instance, ItemDataUnpacked itemData, GroundItemLabel label)
+        {
+            ShowItemOnMap(__instance, itemData, label);
+        }
+    }
+
+    [HarmonyPatch(typeof(GroundItemVisuals), nameof(GroundItemVisuals.initialise), typeof(ItemDataUnpacked), typeof(uint), typeof(GroundItemLabel), typeof(bool))]
+    private static class GroundItemVisuals_initialise_4param_Patch
+    {
+        private static void Prefix(GroundItemVisuals __instance, ItemDataUnpacked itemData, GroundItemLabel label)
+        {
+            ShowItemOnMap(__instance, itemData, label);
+        }
     }
 
     [HarmonyPatch(typeof(SettingsPanelTabNavigable), nameof(SettingsPanelTabNavigable.Awake))]
@@ -355,10 +402,11 @@ public class kg_LastEpoch_Improvements : MelonMod
         {
             const string CategoryName = "KG Improvements";
 #if SPECIALVERSION
-            __instance.CreateNewOption_Toggle(CategoryName, "<color=green>Clear fog on map on start</color>", FogOfWar, (tf) =>
+            __instance.CreateNewOption_Toggle(CategoryName, "<color=green>Clear fog on map</color>", FogOfWar, (tf) =>
             {
                 FogOfWar.Value = tf;
                 ImprovementsModCategory.SaveToFile();
+                ToggleFogOfWar(tf);
             });
             __instance.CreateNewOption_Toggle(CategoryName, "<color=green>Enhanced camera</color>", EnhancedCamera, (tf) =>
             {
@@ -401,20 +449,6 @@ public class kg_LastEpoch_Improvements : MelonMod
     }
 
 #if SPECIALVERSION
-    [HarmonyPatch(typeof(MinimapFogOfWar), nameof(MinimapFogOfWar.Initialize))]
-    private static class MinimapFogOfWar_Initialize_Patch
-    {
-        private const float fullDiscovery = 10000f;
-
-        private static void Prefix(MinimapFogOfWar __instance, out float __state)
-        {
-            __state = __instance.discoveryDistance;
-            if (FogOfWar.Value) __instance.discoveryDistance = fullDiscovery;
-        }
-
-        private static void Postfix(MinimapFogOfWar __instance, float __state) => __instance.discoveryDistance = __state;
-    }
-
     [HarmonyPatch(typeof(CameraManager), nameof(CameraManager.Start))]
     private static class CameraManager_Start_Patch
     {

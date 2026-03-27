@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(ls \"/c/Program Files \\(x86\\)/Steam/steamapps/common/Last Epoch/MelonLoader/Il2CppAssemblies/\")"
+    ]
+  }
+}
