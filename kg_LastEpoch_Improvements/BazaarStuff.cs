@@ -12,48 +12,66 @@ namespace kg_LastEpoch_Improvements;
 public static class BazaarStuff
 {
     private static object LastSearchPressRoutine;
+    private static BazaarUI GetBazaarUI() => UIBase.instance?.PanelSystem?.GetPanelIfOpen<BazaarPanel>()?.BazaarUI;
     public static void Update()
     {
-        if (!Input.GetKey(KeyCode.LeftShift) || !Input.GetKeyDown(KeyCode.Mouse2) || TooltipItemManager.instance?.activeParameters?.Item is not { } currentItem) return;
+        if (!Input.GetKey(KeyCode.LeftShift) || !Input.GetKeyDown(KeyCode.Mouse2)) return;
+        if (SceneManager.GetActiveScene().name != "Bazaar") return;
+        if (UIBase.instance?.TooltipSystem?.ActiveItemTooltipItem is not { } currentItem) return;
         BazaarStallType? type = currentItem.ToStall();
         if (type == null) return;
-        if (SceneManager.GetActiveScene().name != "Bazaar") return;
         UIBase.instance.closeInventory();
-        BazaarUI bazaarUI = UIBase.instance.PanelSystem._bazaarPanel.BazaarUI;
-        bazaarUI.FilterUI.ResetUI();
         UIBase.instance.openBazaar(new Il2CppSystem.Nullable<BazaarStallType>(type.Value));
         if (LastSearchPressRoutine != null) MelonCoroutines.Stop(LastSearchPressRoutine); 
-        LastSearchPressRoutine = MelonCoroutines.Start(PressSearchAfterLoadDone(currentItem));
+        LastSearchPressRoutine = MelonCoroutines.Start(PressSearchAfterLoadDone(currentItem, type.Value));
     }
-    private static void IncludeModsInSearch(List<ItemAffix> mods)
+    private static IEnumerator IncludeModsInSearch(List<ItemAffix> mods, Action<bool> completed)
     {
-        if (mods == null || mods.Count == 0) return;
-        BazaarUI bazaarUI = UIBase.instance.PanelSystem._bazaarPanel.BazaarUI;
+        if (mods == null || mods.Count == 0)
+        {
+            completed(true);
+            yield break;
+        }
+        BazaarUI bazaarUI = GetBazaarUI();
+        if (!bazaarUI) yield break;
         bazaarUI.filterUI.affixesPicker.multiPickerOpener.openPickerButton.onClick.Invoke();
-        State state = UIBase.instance.PanelSystem._multiPickerModal._multipicker.CurrentState;
+        float deadline = Time.unscaledTime + 10f;
+        MultiPickerModal modal = null;
+        while (modal == null && Time.unscaledTime < deadline)
+        {
+            if (!GetBazaarUI()) yield break;
+            modal = UIBase.instance.PanelSystem.GetPanelIfOpen<MultiPickerModal>();
+            if (modal == null) yield return null;
+        }
+        if (modal == null) yield break;
+        State state = modal._multipicker.CurrentState;
         foreach (ItemAffix mod in mods)
         {
-            if (!state.Entries.TryGetValue(mod.affixId, out StatefulEntry val)) continue;
+            if (!state.Entries.TryGetValue(mod.affixId, out StatefulEntry val)) yield break;
             val.selected = true;
             val.data = new AffixData() { tier = mod.DisplayTier };
         }
-        UIBase.instance.PanelSystem._multiPickerModal._multipicker.confirmButton.onClick.Invoke();
+        modal._multipicker.confirmButton.onClick.Invoke();
+        completed(true);
     }
     
-    private static IEnumerator PressSearchAfterLoadDone(ItemDataUnpacked item)
+    private static IEnumerator PressSearchAfterLoadDone(ItemDataUnpacked item, BazaarStallType stallType)
     {
         yield return null; yield return null; yield return null;
+        float deadline = Time.unscaledTime + 10f;
+        while (!GetBazaarUI() && Time.unscaledTime < deadline) yield return null;
         while (true)
         {
-            if (!UIBase.instance.PanelSystem._bazaarPanel.BazaarUI || !UIBase.instance.PanelSystem._bazaarPanel.BazaarUI.gameObject.activeSelf || item == null) 
+            BazaarUI bazaarUI = GetBazaarUI();
+            if (!bazaarUI || !bazaarUI.gameObject.activeSelf || item == null)
                 yield break;
-            if (!UIBase.instance.PanelSystem._bazaarPanel.BazaarUI.IsLoadingIndicatorActive)
+            if (!bazaarUI.IsLoadingIndicatorActive)
             {
                 yield return new WaitForSeconds(0.5f);
-                BazaarUI bazaarUI = UIBase.instance.PanelSystem._bazaarPanel.BazaarUI;
-                bazaarUI.filterUI.clearFilterButton.onClick.Invoke();
+                bazaarUI = GetBazaarUI();
+                if (!bazaarUI || !bazaarUI.gameObject.activeSelf) yield break;
+                bazaarUI.FilterUI.ResetUI(false, new Il2CppSystem.Nullable<BazaarStallType>(stallType), true);
                 if (item.isUniqueSetOrLegendary()) bazaarUI.FilterUI.uniquesPicker.SelectedUniques = new(1) { [0] = item.uniqueID };
-                bazaarUI.FilterUI.legendaryPotentialRange.min.text = item.legendaryPotential.ToString();
                 bazaarUI.FilterUI.legendaryPotentialRange.MinValue = new(item.legendaryPotential);
                 bazaarUI.FilterUI.sortingSelection.dropdown.value = 1;
                 bazaarUI.FilterUI.sortingSelection.SelectedSorting = SortingSelection.GOLD_LOW_FIRST;
@@ -64,17 +82,25 @@ public static class BazaarStuff
                 { 
                     List<ItemAffix> _6TierPlusMods = [];
                     foreach (ItemAffix affix in item.affixes) if (affix.DisplayTier >= 6) _6TierPlusMods.Add(affix);
-                    IncludeModsInSearch(_6TierPlusMods);
+                    bool selected = false;
+                    IEnumerator routine = IncludeModsInSearch(_6TierPlusMods, success => selected = success);
+                    while (routine.MoveNext()) yield return routine.Current;
+                    if (!selected) yield break;
                 }
 
                 if (item.itemType.IsIdol())
                 {
                     List<ItemAffix> _allMods = [];
                     foreach (ItemAffix affix in item.affixes) if (affix.DisplayTier > 0) _allMods.Add(affix);
-                    IncludeModsInSearch(_allMods);
+                    bool selected = false;
+                    IEnumerator routine = IncludeModsInSearch(_allMods, success => selected = success);
+                    while (routine.MoveNext()) yield return routine.Current;
+                    if (!selected) yield break;
                 }
                 
                 yield return new WaitForSeconds(0.5f);
+                bazaarUI = GetBazaarUI();
+                if (!bazaarUI || !bazaarUI.gameObject.activeSelf) yield break;
                 bazaarUI.SearchPress();
                 yield break;  
             }

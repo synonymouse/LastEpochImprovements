@@ -7,6 +7,7 @@ using Il2CppInterop.Runtime;
 using Il2CppInterop.Runtime.Injection;
 using Il2CppItemFiltering;
 using Il2CppLE.Effects;
+using Il2CppLE.AssetBundles;
 using Il2CppTMPro;
 using MelonLoader;
 using Color = UnityEngine.Color;
@@ -21,7 +22,9 @@ namespace kg_LastEpoch_Improvements;
 
 public static class CustomIconTempExtension
 {
-    public static CustomIconProcessor GetIconProcessor(this GameObject go) => go.GetComponentAtIndex<CustomIconProcessor>(4);
+    // Unity's native cloning does not preserve our injected MonoBehaviour.
+    // Attach a fresh processor to each copy of the UI-only template.
+    public static CustomIconProcessor AddIconProcessor(this GameObject go) => go.AddComponent<CustomIconProcessor>();
 }
 
 public class CustomIconProcessor : MonoBehaviour
@@ -30,6 +33,11 @@ public class CustomIconProcessor : MonoBehaviour
     private Text _text;
     private RectTransform thisTransform;
     private GroundItemLabel _label;
+    private bool _keepWhenInactive;
+    private ActorSync _actor;
+    private LoadRef<Sprite> _spriteLoad;
+    private Image _spriteImage;
+    private bool _spriteLoadFinished;
     private static Il2CppLE.UI.Minimap.Minimap _minimap;
 
     private static Vector3 WorldToMinimapUI(Vector3 worldPos)
@@ -51,11 +59,13 @@ public class CustomIconProcessor : MonoBehaviour
 
     private void Awake() => _text = transform.GetChild(1).GetComponent<Text>();
 
-    public void Init(GameObject toTrack, GroundItemLabel label)
+    public void Init(GameObject toTrack, GroundItemLabel label, bool keepWhenInactive = false)
     {
+        _text = transform.GetChild(1).GetComponent<Text>();
         thisTransform = transform.GetComponent<RectTransform>();
         _trackable = toTrack;
         _label = label;
+        _keepWhenInactive = keepWhenInactive;
         transform.localPosition = WorldToMinimapUI(toTrack?.transform.position ?? Vector3.zero);
     }
 
@@ -72,6 +82,23 @@ public class CustomIconProcessor : MonoBehaviour
             _text.color = new Color(1f, 0.05f, 0.77f);
         }
     }
+
+    public void SetItemSprite(ItemDataUnpacked item)
+    {
+        _spriteLoad?.Dispose();
+        var spriteRef = ItemData.GetItemSprite(item.itemType, item.subType, item.isUniqueSetOrLegendary(), item.uniqueID, ItemUIContext.Default);
+        _spriteLoad = SoftRefExtensions.CreateLoadRef<Sprite>(spriteRef);
+        _spriteImage = transform.GetChild(0).GetComponent<Image>();
+        _spriteLoadFinished = false;
+    }
+
+    private void OnDestroy()
+    {
+        _spriteLoad?.Dispose();
+        _spriteLoad = null;
+    }
+
+    public void TrackActor(ActorSync actor) => _actor = actor;
 
     public void SetCustomText(string text, Color c, int size = 15)
     {
@@ -95,13 +122,36 @@ public class CustomIconProcessor : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (!_trackable || !_trackable.activeSelf)
+        if (!ReferenceEquals(_actor, null))
+        {
+            if (!_actor || _actor.IsDead)
+            {
+                Destroy(gameObject);
+                return;
+            }
+            if (_actor.actorVisuals) _trackable = _actor.actorVisuals.gameObject;
+            if (!_trackable) return;
+        }
+        else if (!_trackable || (!_keepWhenInactive && !_trackable.activeSelf))
         {
             Destroy(gameObject);
             return;
         }
 
         transform.localPosition = WorldToMinimapUI(_trackable.transform.position);
+
+        if (!_spriteLoadFinished && _spriteLoad != null)
+        {
+            if (_spriteLoad.Status == AssetStatus.Loaded)
+            {
+                _spriteImage.sprite = _spriteLoad.AssetOrNull;
+                _spriteLoadFinished = true;
+            }
+            else if (_spriteLoad.Status == AssetStatus.Error)
+            {
+                _spriteLoadFinished = true;
+            }
+        }
 
         if (_label == null) return;
 
@@ -193,18 +243,27 @@ public class kg_LastEpoch_Improvements : MelonMod
         textComponent.rectTransform.anchoredPosition = new Vector2(64, 0);
         textComponent.horizontalOverflow = HorizontalWrapMode.Overflow;
         textComponent.verticalOverflow = VerticalWrapMode.Overflow;
-        Outline outline = textComponent.AddComponent<Outline>();
+        Outline outline = textChild.AddComponent<Outline>();
         outline.effectColor = Color.black;
-        CustomMapIcon.AddComponent<CustomIconProcessor>();
     }
 
     public override void OnUpdate()
     {
         BazaarStuff.Update();
         PickupItems.Update();
+#if SPECIALVERSION
+        if (Time.unscaledTime >= _nextMarkerCleanup)
+        {
+            _nextMarkerCleanup = Time.unscaledTime + 1f;
+            ShrinesOnMap.Prune();
+            RaresOnMap.Prune();
+        }
+#endif
     }
 
 #if SPECIALVERSION
+    private float _nextMarkerCleanup;
+
     public override void OnSceneWasInitialized(int buildIndex, string sceneName)
     {
         if (FogOfWar.Value) MelonCoroutines.Start(RevealMinimap());
@@ -269,7 +328,7 @@ public class kg_LastEpoch_Improvements : MelonMod
         {
             foreach (ItemAffix itemAffix in item.affixes)
             {
-                if (AffixList.instance.multiAffixes.FirstOrDefault(x => x.affixId == itemAffix.affixId) is not { } multiAffix || multiAffix.affixProperties == null) continue;
+                if (AffixList.get().multiAffixes.FirstOrDefault(x => x.affixId == itemAffix.affixId) is not { } multiAffix || multiAffix.affixProperties == null) continue;
                 foreach (AffixList.AffixProperty p in multiAffix.affixProperties)
                     if (p.tags == tags && p.property == modProperty)
                     {
@@ -364,12 +423,12 @@ public class kg_LastEpoch_Improvements : MelonMod
             if (!CheckFilter(itemData, out Rule rule, ShowAll.Value)) return;
             GameObject customMapIcon = UnityEngine.Object.Instantiate(CustomMapIcon, DMMap.Instance.iconContainer.transform);
             customMapIcon.SetActive(true);
-            var customiconProcessor = customMapIcon.GetIconProcessor();
+            var customiconProcessor = customMapIcon.AddIconProcessor();
             customiconProcessor.Init(visuals.gameObject, label);
             if (itemData.isUniqueSetOrLegendary()) customiconProcessor.ShowLegendaryPotential(itemData.legendaryPotential, itemData.weaversWill);
-            customMapIcon.GetComponent<Image>().sprite = ItemList.instance.defaultItemBackgroundSprite;
+            customMapIcon.GetComponent<Image>().sprite = ItemList.get().defaultItemBackgroundSprite;
             customMapIcon.GetComponent<Image>().color = GetColorForItemRarity(itemData);
-            customMapIcon.transform.GetChild(0).GetComponent<Image>().sprite = TooltipItemManager.instance.GetItemSprite(itemData.getAsUnpacked(), ItemUIContext.Default);
+            customiconProcessor.SetItemSprite(itemData);
         }
         catch (Exception ex)
         {
@@ -377,17 +436,8 @@ public class kg_LastEpoch_Improvements : MelonMod
         }
     }
 
-    [HarmonyPatch(typeof(GroundItemVisuals), nameof(GroundItemVisuals.initialise), typeof(ItemDataUnpacked), typeof(uint), typeof(GroundItemLabel), typeof(GroundItemRarityVisuals), typeof(bool))]
+    [HarmonyPatch(typeof(GroundItemVisuals), nameof(GroundItemVisuals.initialise), typeof(ItemDataUnpacked), typeof(uint), typeof(GroundItemLabel), typeof(GroundItemRarityVisualsV2), typeof(bool))]
     private static class GroundItemVisuals_initialise_Patch
-    {
-        private static void Prefix(GroundItemVisuals __instance, ItemDataUnpacked itemData, GroundItemLabel label)
-        {
-            ShowItemOnMap(__instance, itemData, label);
-        }
-    }
-
-    [HarmonyPatch(typeof(GroundItemVisuals), nameof(GroundItemVisuals.initialise), typeof(ItemDataUnpacked), typeof(uint), typeof(GroundItemLabel), typeof(bool))]
-    private static class GroundItemVisuals_initialise_4param_Patch
     {
         private static void Prefix(GroundItemVisuals __instance, ItemDataUnpacked itemData, GroundItemLabel label)
         {

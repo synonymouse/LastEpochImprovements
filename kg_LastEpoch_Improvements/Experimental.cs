@@ -13,7 +13,7 @@ public class Experimental
     //I would even assume that for (maybe) some optimization purposes they're changing TMP Text not via .text = "something" but by directly changing TMP Vertex buffer or smth
     //(that's why we need to set it to empty string first, so it internally updates verticies and then we can set it to the desired value)
     //^ or maybe its all bullshit and im just dumb, who knows
-    [HarmonyPatch(typeof(GroundItemLabel), nameof(GroundItemLabel.SetGroundTooltipText), typeof(bool))]
+    [HarmonyPatch(typeof(GroundItemLabel), nameof(GroundItemLabel.SetGroundTooltipText))]
     private static class GroundItemLabel_Show_Patch
     {
         private static void Postfix(GroundItemLabel __instance)

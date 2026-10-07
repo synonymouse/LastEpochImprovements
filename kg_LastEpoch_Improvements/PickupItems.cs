@@ -30,10 +30,11 @@ public static class PickupItems
             Vector3 playerPosition = player.transform.position;
             if (playerPosition == Vector3.zero) return;
 
-            var allItems = GroundItemLabel.all;
+            var allItems = GroundItemVisuals.all;
 
-            foreach (GroundItemLabel item in allItems)
+            foreach (GroundItemVisuals visuals in allItems)
             {
+                GroundItemLabel item = visuals?.label;
                 if (item == null || !item.gameObject.activeSelf)
                     continue;
 

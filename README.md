@@ -18,7 +18,7 @@ Lootfilter items visible on map. Rules custom drop sounds. Tooltip improvements 
 ### 📦 How to Install
 
 1. Download [MelonLoader.Installer.exe] and install MelonLoader.
-    - I'm using **v6.1** because **v6.2** has a bug that sometimes prevents the game from starting.
+    - The current Unity 6000.4 compatibility changes were verified with **MelonLoader 0.7.3**.
     - 📖 Installation Guide: [melonwiki]
     - Run `MelonLoader.Installer.exe`
         - Click the **SELECT** button.
@@ -41,6 +41,19 @@ However, modifying the game client is **against the Last Epoch Terms of Service*
 ---
 
 ### 🛠️ Troubleshooting
+
+For Unity 6000.4 compatibility and the local MelonLoader/UnityExplorer fixes,
+see [diagnostics](docs/diagnostics-2026-10-03.md) and the tool READMEs:
+
+- [Automatic interop repair](tools/AutoRepairUnityInterop/README.md)
+- [UnityExplorer bundle compatibility](tools/UnityExplorerCompat/README.md)
+- [UnityExplorer scene API repair](tools/RepairExplorerScenes/README.md)
+
+Build verification without deploying a DLL into the game:
+
+```bash
+dotnet build kg_LastEpoch_Improvements.sln -c Special -p:DeployToGame=false
+```
 
 **Issue:** Can't load mod due to ".NET 6.0" error  
 **Fix:** [Download and install .NET 6.0 from Microsoft](https://dotnet.microsoft.com/en-us/download/dotnet/6.0)
