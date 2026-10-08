@@ -263,31 +263,11 @@ public class kg_LastEpoch_Improvements : MelonMod
 
 #if SPECIALVERSION
     private float _nextMarkerCleanup;
-
-    public override void OnSceneWasInitialized(int buildIndex, string sceneName)
-    {
-        if (FogOfWar.Value) MelonCoroutines.Start(RevealMinimap());
-    }
-
-    private static IEnumerator RevealMinimap()
-    {
-        Il2CppLE.UI.Minimap.Minimap minimap = null;
-        for (int i = 0; i < 10; i++)
-        {
-            yield return new WaitForSeconds(1f);
-            minimap = UnityEngine.Object.FindObjectOfType<Il2CppLE.UI.Minimap.Minimap>();
-            if (minimap != null) break;
-        }
-        if (minimap == null) yield break;
-        float original = minimap.RevealRadius;
-        minimap.RevealRadius = 10000f;
-        yield return null;
-        minimap.RevealRadius = original;
-    }
+    internal static bool IsMapRevealEnabled => FogOfWar?.Value == true;
 
     private static void ToggleFogOfWar(bool enable)
     {
-        if (enable) MelonCoroutines.Start(RevealMinimap());
+        MapReveal.Toggle(enable);
     }
 #endif
 
